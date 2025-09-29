@@ -6,12 +6,8 @@ from datetime import datetime
 # Google Sheets 연동을 위한 Streamlit Connection 추가
 import json
 # Secrets에서 GSheets_JSON_Content 키를 읽어와 JSON 형태로 파싱
-gsheet_credentials = json.loads(st.secrets["GSheets_JSON_Content"])
-
-# Google Sheets 연결 설정 변경
-conn = st.connection("gsheets", type="base", 
-                     service_account_info=gsheet_credentials, 
-                     spreadsheet=st.secrets["connections.gsheets"]["spreadsheet"])
+Google Sheets 연동을 위한 Streamlit Connection (기본 연결 방식으로 단순화)
+conn = st.connection("gsheets", type="base") 
 
 # st.cache_data.clear()는 제거합니다. (오류 방지)
 
@@ -120,4 +116,5 @@ if submit_button:
             
         except Exception as e:
             st.error(f"API 호출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요. (오류: {e})")
+
 
