@@ -4,9 +4,16 @@ from google.genai import types
 import os
 from datetime import datetime
 # Google Sheets 연동을 위한 Streamlit Connection 추가
-st.cache_data.clear() # 캐시 데이터 클리어
-conn = st.connection("gsheets", type=st.connections.SnowflakeConnection)
+import json
+# Secrets에서 GSheets_JSON_Content 키를 읽어와 JSON 형태로 파싱
+gsheet_credentials = json.loads(st.secrets["GSheets_JSON_Content"])
 
+# Google Sheets 연결 설정 변경
+conn = st.connection("gsheets", type="base", 
+                     service_account_info=gsheet_credentials, 
+                     spreadsheet=st.secrets["connections.gsheets"]["spreadsheet"])
+
+# st.cache_data.clear()는 제거합니다. (오류 방지)
 
 # -----------------------------------------------------
 # 1. API 설정 및 모델 초기화
@@ -113,3 +120,4 @@ if submit_button:
             
         except Exception as e:
             st.error(f"API 호출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요. (오류: {e})")
+
