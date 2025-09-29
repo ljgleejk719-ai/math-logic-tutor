@@ -2,24 +2,24 @@ import streamlit as st
 from google import genai
 from google.genai import types
 import os
+from datetime import datetime
+# Google Sheets 연동을 위한 Streamlit Connection 추가
+st.cache_data.clear() # 캐시 데이터 클리어
+conn = st.connection("gsheets", type=st.connections.SnowflakeConnection)
+
 
 # -----------------------------------------------------
 # 1. API 설정 및 모델 초기화
 # -----------------------------------------------------
-# 이전에 제공하신 API 키를 사용합니다.
 api_key = "AIzaSyAU1iwa-OFdgFyiookp8Rcwez6rlNXajm4"
 
 if not api_key:
     st.error("⚠️ API Key가 설정되지 않았습니다.")
     st.stop()
 
-# Gemini 클라이언트 초기화
 client = genai.Client(api_key=api_key)
-model_name = 'gemini-2.5-flash' # 빠르고 가성비 좋은 모델 선택
-
-# -----------------------------------------------------
-# 2. 핵심 프롬프트 (System Instruction) 정의 - 수정 완료
-# -----------------------------------------------------
+model_name = 'gemini-2.5-flash' 
+# ... (SYSTEM_INSTRUCTION 생략 - 이전 프롬프트 유지) ... 
 SYSTEM_INSTRUCTION = """
 당신은 고등학교 1학년 수학 '명제' 단원의 전문 튜터입니다.
 당신의 목표는 학생의 논리적 사고력을 향상시키고, 스스로 오류를 발견하도록 돕는 것입니다.
@@ -44,6 +44,7 @@ SYSTEM_INSTRUCTION = """
 4. **마지막 질문**: 학생이 다음 명제를 입력하도록 유도하는 질문을 덧붙입니다.
 """
 
+
 # -----------------------------------------------------
 # 3. Streamlit 웹 인터페이스 구현 - 제목 수정 완료
 # -----------------------------------------------------
@@ -54,7 +55,6 @@ st.markdown("명제를 입력하고, 본인의 판단과 이유를 적어 **즉�
 
 # 폼 생성 (즉각적인 응답을 위해 st.form 사용)
 with st.form(key='tutor_form'):
-    # 입력 필드
     user_proposition = st.text_input("1. 명제를 입력해 주세요. (예: 모든 자연수 x에 대해 x² > x 이다.)", key="prop_input")
     user_judgment = st.radio(
         "2. 학생의 판단은 무엇인가요?",
@@ -69,12 +69,10 @@ with st.form(key='tutor_form'):
 
 # 제출 버튼이 눌렸을 때 로직
 if submit_button:
-    # 입력 유효성 검사
     if not user_proposition or not user_judgment or not user_reason:
         st.error("모든 항목(명제, 판단, 이유)을 입력해 주세요.")
         st.stop()
         
-    # AI에 전달할 최종 사용자 입력 메시지 구성
     user_message = f"""
     [학생의 입력]
     1. 명제: {user_proposition}
@@ -84,10 +82,8 @@ if submit_button:
     위 입력에 대해 엄격한 피드백 원칙을 따라 논리적인 튜터링 피드백을 제공해 주세요.
     """
     
-    # 로딩 스피너 표시 (피드백이 오는 동안)
     with st.spinner('✨ AI 튜터가 논리를 분석하고 피드백을 생성 중입니다...'):
         try:
-            # Gemini API 호출
             response = client.models.generate_content(
                 model=model_name,
                 contents=user_message,
@@ -96,9 +92,24 @@ if submit_button:
                 )
             )
             
-            # 결과 표시
+            ai_feedback = response.text # AI 피드백 저장
+            
+            # --- 데이터 저장 로직 (추가된 핵심 부분) ---
+            # 1. 시트 이름은 'Sheet1' (Google Sheets 기본값)을 사용합니다.
+            # 2. 행 추가 (append) 명령을 사용하여 Google Sheets에 데이터 기록
+            conn.append('Sheet1', data=[
+                [
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # 시간
+                    user_proposition, 
+                    user_judgment, 
+                    user_reason, 
+                    ai_feedback
+                ]
+            ])
+            # ---------------------------------------------
+
             st.success("🎉 피드백이 도착했습니다!")
-            st.markdown(response.text)
+            st.markdown(ai_feedback)
             
         except Exception as e:
             st.error(f"API 호출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요. (오류: {e})")
